@@ -1,12 +1,20 @@
 # By design, pylint: disable=C0302
 import threading
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Optional, Union, TypeVar, cast, overload
 
 from rx.disposable import Disposable
 from rx.concurrency import current_thread_scheduler
 
 from ..observer import AutoDetachObserver
 from .. import typing, abc
+
+A = TypeVar('A')
+B = TypeVar('B')
+C = TypeVar('C')
+D = TypeVar('D')
+E = TypeVar('E')
+F = TypeVar('F')
+G = TypeVar('G')
 
 
 class Observable(typing.Observable):
@@ -15,7 +23,7 @@ class Observable(typing.Observable):
     Represents a push-style collection and contains all operators as
     methods to allow classic Rx chaining of operators."""
 
-    def __init__(self, subscribe: Callable[[typing.Observer, Optional[typing.Scheduler]], typing.Disposable] = None) -> None:
+    def __init__(self, subscribe: Optional[Callable[[typing.Observer, Optional[typing.Scheduler]], typing.Disposable]] = None) -> None:
         """Creates an observable sequence object from the specified
         subscription function.
 
@@ -105,12 +113,12 @@ class Observable(typing.Observable):
         return concat(self, other)
 
     def subscribe(self,  # pylint: disable=too-many-arguments,arguments-differ
-                  observer: Union[typing.Observer, typing.OnNext] = None,
-                  on_error: typing.OnError = None,
-                  on_completed: typing.OnCompleted = None,
-                  on_next: typing.OnNext = None,
+                  observer: Optional[Union[typing.Observer, typing.OnNext]] = None,
+                  on_error: Optional[typing.OnError] = None,
+                  on_completed: Optional[typing.OnCompleted] = None,
+                  on_next: Optional[typing.OnNext] = None,
                   *,
-                  scheduler: typing.Scheduler = None,
+                  scheduler: Optional[typing.Scheduler] = None,
                   ) -> typing.Disposable:
         """Subscribe an observer to the observable sequence.
 
@@ -145,13 +153,12 @@ class Observable(typing.Observable):
 
         return self.subscribe_(on_next, on_error, on_completed, scheduler)
 
-
     def subscribe_(self,
-                   on_next: typing.OnNext = None,
-                   on_error: typing.OnError = None,
-                   on_completed: typing.OnCompleted = None,
-                   scheduler: typing.Scheduler = None
-                  ) -> typing.Disposable:
+                   on_next: Optional[typing.OnNext] = None,
+                   on_error: Optional[typing.OnError] = None,
+                   on_completed: Optional[typing.OnCompleted] = None,
+                   scheduler: Optional[typing.Scheduler] = None
+                   ) -> typing.Disposable:
         """Subscribe callbacks to the observable sequence.
 
         Examples:
@@ -208,8 +215,85 @@ class Observable(typing.Observable):
         # Hide the identity of the auto detach observer
         return Disposable(auto_detach_observer.dispose)
 
+    @overload
+    def pipe(self, *operators: Callable[['Observable'], 'Observable']) -> 'Observable':  # pylint: disable=no-self-use
+        """Compose multiple operators left to right.
 
-    def pipe(self, *operators: Callable[['Observable'], 'Observable']) -> 'Observable':
+        Composes zero or more operators into a functional composition.
+        The operators are composed to right. A composition of zero
+        operators gives back the original source.
+
+        source.pipe() == source
+        source.pipe(f) == f(source)
+        source.pipe(g, f) == f(g(source))
+        source.pipe(h, g, f) == f(g(h(source)))
+        ...
+
+        Returns the composed observable.
+        """
+        ...
+
+    @overload
+    def pipe(self) -> 'Observable':  # pylint: disable=function-redefined, no-self-use
+        ...  # pylint: disable=pointless-statement
+
+    @overload
+    def pipe(self, op1: Callable[['Observable'], A]) -> A:  # pylint: disable=function-redefined, no-self-use
+        ...  # pylint: disable=pointless-statement
+
+    @overload
+    def pipe(self,  # pylint: disable=function-redefined, no-self-use
+             op1: Callable[['Observable'], A],
+             op2: Callable[[A], B]) -> B:
+        ...  # pylint: disable=pointless-statement
+
+    @overload
+    def pipe(self,  # pylint: disable=function-redefined, no-self-use
+             op1: Callable[['Observable'], A],
+             op2: Callable[[A], B],
+             op3: Callable[[B], C]) -> C:
+        ...  # pylint: disable=pointless-statement
+
+    @overload
+    def pipe(self,  # pylint: disable=function-redefined, no-self-use
+             op1: Callable[['Observable'], A],
+             op2: Callable[[A], B],
+             op3: Callable[[B], C],
+             op4: Callable[[C], D]) -> D:
+        ...  # pylint: disable=pointless-statement
+
+    @overload
+    def pipe(self,  # pylint: disable=function-redefined, no-self-use, too-many-arguments
+             op1: Callable[['Observable'], A],
+             op2: Callable[[A], B],
+             op3: Callable[[B], C],
+             op4: Callable[[C], D],
+             op5: Callable[[D], E]) -> E:
+        ...  # pylint: disable=pointless-statement
+
+    @overload
+    def pipe(self,  # pylint: disable=function-redefined, no-self-use, too-many-arguments
+             op1: Callable[['Observable'], A],
+             op2: Callable[[A], B],
+             op3: Callable[[B], C],
+             op4: Callable[[C], D],
+             op5: Callable[[D], E],
+             op6: Callable[[E], F]) -> F:
+        ...  # pylint: disable=pointless-statement
+
+    @overload
+    def pipe(self,  # pylint: disable=function-redefined, no-self-use, too-many-arguments
+             op1: Callable[['Observable'], A],
+             op2: Callable[[A], B],
+             op3: Callable[[B], C],
+             op4: Callable[[C], D],
+             op5: Callable[[D], E],
+             op6: Callable[[E], F],
+             op7: Callable[[F], G]) -> G:
+        ...  # pylint: disable=pointless-statement
+
+    # pylint: disable=function-redefined
+    def pipe(self, *operators: Callable[['Observable'], Any]) -> Any:
         """Compose multiple operators left to right.
 
         Composes zero or more operators into a functional composition.
@@ -227,13 +311,12 @@ class Observable(typing.Observable):
         from ..pipe import pipe
         return pipe(*operators)(self)
 
-
     def run(self) -> Any:
         """Run source synchronously.
 
         Subscribes to the observable source. Then blocks and waits for the
         observable source to either complete or error. Returns the
-        last value emitted, or thows exception if any error occured.
+        last value emitted, or throws exception if any error occurred.
 
         Examples:
             >>> result = run(source)
@@ -241,7 +324,7 @@ class Observable(typing.Observable):
         Raises:
             SequenceContainsNoElementsError: if observable completes
                 (on_completed) without any values being emitted.
-            Exception: raises exception if any error (on_error) occured.
+            Exception: raises exception if any error (on_error) occurred.
 
         Returns:
             The last element emitted from the observable.
